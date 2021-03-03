@@ -4,7 +4,6 @@ import one.digitalinnovation.beerstock.builder.BeerDTOBuilder;
 import one.digitalinnovation.beerstock.dto.BeerDTO;
 import one.digitalinnovation.beerstock.dto.QuantityDTO;
 import one.digitalinnovation.beerstock.exception.BeerNotFoundException;
-import one.digitalinnovation.beerstock.exception.BeerStockExceededException;
 import one.digitalinnovation.beerstock.service.BeerService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -23,10 +22,8 @@ import java.util.Collections;
 
 import static one.digitalinnovation.beerstock.utils.JsonConvertionUtils.asJsonString;
 import static org.hamcrest.core.Is.is;
-import static org.mockito.Mockito.doNothing;
-import static org.mockito.Mockito.doThrow;
-import static org.mockito.Mockito.when;
-import static org.springframework.mock.http.server.reactive.MockServerHttpRequest.patch;
+import static org.mockito.Mockito.*;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -57,14 +54,14 @@ public class BeerControllerTest {
     }
 
     @Test
-    void whenPOSTIsCalledThenABeerIsCreated() throws Exception {
-        // given
-        BeerDTO beerDTO = BeerDTOBuilder.builder().build().toBeerDTO();
+    void whenPOSTIsCalledThenBeerIsCreated() throws Exception {
+        //given
+        var beerDTO = BeerDTOBuilder.builder().build().toBeerDTO();
 
-        // when
+        //when
         when(beerService.createBeer(beerDTO)).thenReturn(beerDTO);
 
-        // then
+        //then
         mockMvc.perform(post(BEER_API_URL_PATH)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(asJsonString(beerDTO)))
@@ -76,11 +73,11 @@ public class BeerControllerTest {
 
     @Test
     void whenPOSTIsCalledWithoutRequiredFieldThenAnErrorIsReturned() throws Exception {
-        // given
-        BeerDTO beerDTO = BeerDTOBuilder.builder().build().toBeerDTO();
+        //given
+        var beerDTO = BeerDTOBuilder.builder().build().toBeerDTO();
         beerDTO.setBrand(null);
 
-        // then
+        //then
         mockMvc.perform(post(BEER_API_URL_PATH)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(asJsonString(beerDTO)))
@@ -90,13 +87,13 @@ public class BeerControllerTest {
     @Test
     void whenGETIsCalledWithValidNameThenOkStatusIsReturned() throws Exception {
         // given
-        BeerDTO beerDTO = BeerDTOBuilder.builder().build().toBeerDTO();
+        var beerDTO = BeerDTOBuilder.builder().build().toBeerDTO();
 
-        //when
+        // when
         when(beerService.findByName(beerDTO.getName())).thenReturn(beerDTO);
 
         // then
-        mockMvc.perform(MockMvcRequestBuilders.get(BEER_API_URL_PATH + "/" + beerDTO.getName())
+        mockMvc.perform(get(BEER_API_URL_PATH + "/" + beerDTO.getName())
                 .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.name", is(beerDTO.getName())))
@@ -107,13 +104,13 @@ public class BeerControllerTest {
     @Test
     void whenGETIsCalledWithoutRegisteredNameThenNotFoundStatusIsReturned() throws Exception {
         // given
-        BeerDTO beerDTO = BeerDTOBuilder.builder().build().toBeerDTO();
+        var beerDTO = BeerDTOBuilder.builder().build().toBeerDTO();
 
-        //when
+        // when
         when(beerService.findByName(beerDTO.getName())).thenThrow(BeerNotFoundException.class);
 
         // then
-        mockMvc.perform(MockMvcRequestBuilders.get(BEER_API_URL_PATH + "/" + beerDTO.getName())
+        mockMvc.perform(get(BEER_API_URL_PATH + "/" + beerDTO.getName())
                 .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isNotFound());
     }
@@ -127,7 +124,7 @@ public class BeerControllerTest {
         when(beerService.listAll()).thenReturn(Collections.singletonList(beerDTO));
 
         // then
-        mockMvc.perform(MockMvcRequestBuilders.get(BEER_API_URL_PATH)
+        mockMvc.perform(get(BEER_API_URL_PATH)
                 .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].name", is(beerDTO.getName())))
@@ -144,7 +141,7 @@ public class BeerControllerTest {
         when(beerService.listAll()).thenReturn(Collections.singletonList(beerDTO));
 
         // then
-        mockMvc.perform(MockMvcRequestBuilders.get(BEER_API_URL_PATH)
+        mockMvc.perform(get(BEER_API_URL_PATH)
                 .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk());
     }
@@ -158,7 +155,7 @@ public class BeerControllerTest {
         doNothing().when(beerService).deleteById(beerDTO.getId());
 
         // then
-        mockMvc.perform(MockMvcRequestBuilders.delete(BEER_API_URL_PATH + "/" + beerDTO.getId())
+        mockMvc.perform(delete(BEER_API_URL_PATH + "/" + beerDTO.getId())
                 .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isNoContent());
     }
@@ -169,7 +166,7 @@ public class BeerControllerTest {
         doThrow(BeerNotFoundException.class).when(beerService).deleteById(INVALID_BEER_ID);
 
         // then
-        mockMvc.perform(MockMvcRequestBuilders.delete(BEER_API_URL_PATH + "/" + INVALID_BEER_ID)
+        mockMvc.perform(delete(BEER_API_URL_PATH + "/" + INVALID_BEER_ID)
                 .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isNotFound());
     }
@@ -185,7 +182,7 @@ public class BeerControllerTest {
 
         when(beerService.increment(VALID_BEER_ID, quantityDTO.getQuantity())).thenReturn(beerDTO);
 
-        mockMvc.perform(MockMvcRequestBuilders.patch(BEER_API_URL_PATH + "/" + VALID_BEER_ID + BEER_API_SUBPATH_INCREMENT_URL)
+        mockMvc.perform(patch(BEER_API_URL_PATH + "/" + VALID_BEER_ID + BEER_API_SUBPATH_INCREMENT_URL)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(asJsonString(quantityDTO))).andExpect(status().isOk())
                 .andExpect(jsonPath("$.name", is(beerDTO.getName())))
